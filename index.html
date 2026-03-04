@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>会议参会人快速复制工具</title>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500;6..72,600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: #F7F5F2;
+    font-family: 'Newsreader', 'Georgia', serif;
+    padding: 0;
+  }
+  /* Lock Screen */
+  .lock-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #F7F5F2;
+  }
+  .lock-box {
+    text-align: center;
+    padding: 48px 36px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    max-width: 380px;
+    width: 90%;
+  }
+  .lock-icon {
+    width: 64px; height: 64px;
+    background: #EDE9E4;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px;
+  }
+  .lock-title {
+    font-size: 22px; font-weight: 400; color: #3A3530; margin-bottom: 8px;
+  }
+  .lock-hint {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; color: #A09890; margin-bottom: 24px;
+  }
+  .lock-input {
+    width: 100%; padding: 14px 18px;
+    border: 2px solid #EDE9E4; border-radius: 12px;
+    font-family: 'DM Sans', sans-serif; font-size: 16px;
+    text-align: center; color: #3A3530; outline: none;
+    letter-spacing: 3px; transition: border-color 0.2s;
+  }
+  .lock-input:focus { border-color: #A09890; }
+  .lock-input.error { border-color: #E63946; animation: shake 0.4s ease; }
+  .lock-submit {
+    width: 100%; padding: 14px;
+    background: #3A3530; color: #F7F5F2; border: none;
+    border-radius: 12px; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+    margin-top: 12px; transition: all 0.2s;
+  }
+  .lock-submit:hover { background: #1A1510; }
+  .lock-error-msg {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px; color: #E63946; margin-top: 10px;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .lock-error-msg.show { opacity: 1; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    50% { transform: translateX(8px); }
+    75% { transform: translateX(-4px); }
+  }
+  .main-content { display: none; }
+  .mono { font-family: 'DM Sans', sans-serif; }
+  .container { max-width: 540px; margin: 0 auto; padding: 40px 20px; }
+
+  /* Header */
+  .header-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px; font-weight: 600; color: #A09890;
+    letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px;
+  }
+  h1 { font-size: 32px; font-weight: 300; color: #3A3530; line-height: 1.2; letter-spacing: -0.5px; }
+  .subtitle { font-family: 'DM Sans', sans-serif; font-size: 13px; color: #A09890; margin-top: 8px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; align-items: center; }
+  .tab-btn {
+    padding: 8px 18px; border: 1px solid #D4CFC8; background: transparent;
+    border-radius: 24px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 500; color: #6B6560; transition: all 0.2s; white-space: nowrap;
+  }
+  .tab-btn:hover { background: #EDE9E4; }
+  .tab-btn.active { background: #3A3530; color: #F7F5F2; border-color: #3A3530; }
+  .tab-btn.dashed { border-style: dashed; }
+
+  /* Copy Button */
+  .copy-btn {
+    display: flex; align-items: center; gap: 10px; padding: 14px 32px;
+    background: #3A3530; color: #F7F5F2; border: none; border-radius: 12px;
+    cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 15px;
+    font-weight: 600; letter-spacing: 0.3px; transition: all 0.25s;
+    width: 100%; justify-content: center; margin-bottom: 24px;
+  }
+  .copy-btn:hover { background: #1A1510; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  .copy-btn.copied { background: #4A7C59; }
+
+  /* Member Card */
+  .member-card {
+    display: flex; align-items: center; padding: 14px 16px;
+    background: white; border-radius: 12px; margin-bottom: 8px;
+    transition: all 0.2s; border: 1px solid transparent;
+  }
+  .member-card:hover { border-color: #D4CFC8; }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-right: 14px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: #5A5550;
+  }
+  .member-info { flex: 1; min-width: 0; }
+  .member-name { font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; color: #3A3530; }
+  .member-email {
+    font-family: 'DM Sans', sans-serif; font-size: 12px; color: #A09890; margin-top: 2px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* Buttons */
+  .icon-btn {
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    border: none; background: transparent; border-radius: 8px; cursor: pointer;
+    color: #A09890; transition: all 0.15s; font-size: 16px;
+  }
+  .icon-btn:hover { background: #F0EBE6; color: #6B6560; }
+  .icon-btn.danger:hover { background: #FDE8E8; color: #C53030; }
+
+  .text-input {
+    width: 100%; padding: 10px 14px; border: 1px solid #D4CFC8; border-radius: 10px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; background: white;
+    color: #3A3530; outline: none; transition: border-color 0.2s;
+  }
+  .text-input:focus { border-color: #A09890; }
+  .text-input::placeholder { color: #B8B2AA; }
+
+  .small-btn {
+    padding: 8px 20px; border-radius: 10px; border: none; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; transition: all 0.15s;
+  }
+  .small-btn.primary { background: #3A3530; color: #F7F5F2; }
+  .small-btn.primary:hover { background: #1A1510; }
+  .small-btn.secondary { background: #EDE9E4; color: #6B6560; }
+  .small-btn.secondary:hover { background: #D4CFC8; }
+
+  .add-member-btn {
+    width: 100%; padding: 14px; margin-top: 4px; background: transparent;
+    border: 1px dashed #D4CFC8; border-radius: 12px; cursor: pointer;
+    color: #A09890; font-family: 'DM Sans', sans-serif; font-size: 13px;
+    font-weight: 500; transition: all 0.15s;
+  }
+  .add-member-btn:hover { background: #EDE9E4; border-color: #A09890; }
+
+  .add-form {
+    padding: 16px; background: white; border-radius: 12px;
+    margin-top: 4px; border: 1px solid #D4CFC8;
+  }
+  .form-fields { display: flex; flex-direction: column; gap: 10px; }
+  .form-actions { display: flex; gap: 8px; }
+
+  .tip {
+    margin-top: 32px; padding: 14px 18px; background: #EDE9E4;
+    border-radius: 12px; font-family: 'DM Sans', sans-serif;
+    font-size: 12px; color: #6B6560; line-height: 1.6;
+  }
+
+  .delete-group {
+    width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;
+    border: none; background: transparent; cursor: pointer; color: #B8B2AA;
+    font-size: 12px; border-radius: 50%; margin-left: 4px; transition: all 0.15s;
+  }
+  .delete-group:hover { background: #FDE8E8; color: #C53030; }
+
+  .tab-wrapper { position: relative; display: inline-flex; align-items: center; }
+  .inline-form { display: flex; gap: 6px; align-items: center; }
+  .inline-input { width: 140px; padding: 7px 12px; font-size: 13px; }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: #A09890; }
+  .empty-icon { font-size: 36px; margin-bottom: 12px; }
+
+  .btn-row { display: flex; gap: 2px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: #4A7C59; color: white; padding: 12px 28px; border-radius: 12px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.3s;
+    pointer-events: none; z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- Lock Screen -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#A09890" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <div class="lock-title">需要验证身份</div>
+    <div class="lock-hint">请输入访问密码以查看邮箱列表</div>
+    <input class="lock-input" id="pwdInput" type="password" placeholder="输入密码" autocomplete="off">
+    <button class="lock-submit" id="pwdSubmit">验 证</button>
+    <div class="lock-error-msg" id="pwdError">密码错误，请重试</div>
+  </div>
+</div>
+
+<!-- Main Content (hidden until password verified) -->
+<div class="main-content" id="mainContent">
+
+<div class="container" id="app"></div>
+<div class="toast" id="toast">已复制！直接粘贴到 Outlook 收件人栏</div>
+
+</div>
+
+<script>
+const STORAGE_KEY = 'meeting-groups-v1';
+const COLORS = ["#E8D5E0","#D5DFE8","#D5E8D9","#E8E2D5","#DDD5E8","#D5E8E6","#E8D5D5","#D9E8D5"];
+
+const DEFAULT_GROUPS = [
+  {
+    id: "1",
+    name: "cmclist",
+    members: [
+      { name: "Hantao Song", email: "hantao.song@polyu.edu.hk" },
+      { name: "Chucai Liu", email: "chucai.liu@connect.polyu.hk" },
+      { name: "Zixuan Chen", email: "24101992d@connect.polyu.hk" },
+      { name: "Huimin Zhang", email: "huimin.zhang@connect.polyu.hk" },
+      { name: "Hanlin Huang", email: "hanlin.huang@connect.polyu.hk" },
+      { name: "Yongshen Zeng", email: "yongshen.zeng@connect.polyu.hk" },
+      { name: "Linwen Yu", email: "24094806g@connect.polyu.hk" },
+      { name: "Xingzhi Zhou", email: "xingzhi.zhou@connect.polyu.hk" },
+      { name: "Hengtian Zhao", email: "hengtian.zhao@connect.polyu.hk" },
+      { name: "Haohan Yang", email: "haohan.yang@connect.polyu.hk" },
+    ],
+  },
+];
+
+let state = {
+  groups: [],
+  activeGroupId: "1",
+  showAddGroup: false,
+  showAddMember: false,
+  editingEmail: null,
+};
+
+function loadData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      state.groups = JSON.parse(saved);
+      state.activeGroupId = state.groups[0]?.id || "1";
+    } else {
+      state.groups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+    }
+  } catch (e) {
+    state.groups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+  }
+}
+
+function saveData() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.groups)); } catch(e) {}
+}
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function getInitials(name) {
+  return name.split(/[\s@.-]+/).slice(0,2).map(w => (w[0]||'').toUpperCase()).join('');
+}
+
+function getGroup() { return state.groups.find(g => g.id === state.activeGroupId); }
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function copyEmails(group) {
+  const emails = group.members.map(m => m.email).join('; ');
+  // 兼容本地文件和旧浏览器的复制方式
+  const textarea = document.createElement('textarea');
+  textarea.value = emails;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
+  showToast();
+}
+
+function render() {
+  const group = getGroup();
+  const app = document.getElementById('app');
+
+  let html = `
+    <div class="header-label">快速会议工具</div>
+    <h1>参会人列表</h1>
+    <p class="subtitle">选择分组，一键复制所有邮箱，粘贴到 Outlook</p>
+    <div class="tabs" style="margin-top:28px">`;
+
+  state.groups.forEach(g => {
+    html += `<div class="tab-wrapper">
+      <button class="tab-btn ${g.id === state.activeGroupId ? 'active' : ''}" onclick="switchTab('${g.id}')">
+        ${esc(g.name)} <span style="margin-left:6px;opacity:0.6">(${g.members.length})</span>
+      </button>
+      ${state.groups.length > 1 ? `<button class="delete-group" onclick="event.stopPropagation();deleteGroup('${g.id}')" title="删除分组">✕</button>` : ''}
+    </div>`;
+  });
+
+  if (state.showAddGroup) {
+    html += `<div class="inline-form">
+      <input class="text-input inline-input" id="newGroupName" placeholder="分组名称" onkeydown="if(event.key==='Enter')addGroup()">
+      <button class="small-btn primary" onclick="addGroup()">添加</button>
+      <button class="small-btn secondary" onclick="state.showAddGroup=false;render()">取消</button>
+    </div>`;
+  } else {
+    html += `<button class="tab-btn dashed" onclick="state.showAddGroup=true;render();setTimeout(()=>document.getElementById('newGroupName')?.focus(),50)">+ 新建分组</button>`;
+  }
+  html += `</div>`;
+
+  if (group && group.members.length > 0) {
+    html += `<button class="copy-btn" onclick="copyEmails(getGroup())">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      复制全部邮箱（${group.members.length} 人）
+    </button>`;
+  }
+
+  if (group) {
+    group.members.forEach((m, idx) => {
+      if (state.editingEmail === m.email) {
+        html += `<div class="member-card">
+          <div class="form-fields" style="flex:1">
+            <input class="text-input" id="editName" value="${esc(m.name)}" placeholder="姓名">
+            <input class="text-input" id="editEmail" value="${esc(m.email)}" placeholder="邮箱">
+            <div class="form-actions">
+              <button class="small-btn primary" onclick="saveEdit('${esc(m.email)}')">保存</button>
+              <button class="small-btn secondary" onclick="state.editingEmail=null;render()">取消</button>
+            </div>
+          </div>
+        </div>`;
+      } else {
+        html += `<div class="member-card">
+          <div class="avatar" style="background:${COLORS[idx % COLORS.length]}">${getInitials(m.name)}</div>
+          <div class="member-info">
+            <div class="member-name">${esc(m.name)}</div>
+            <div class="member-email">${esc(m.email)}</div>
+          </div>
+          <div class="btn-row">
+            <button class="icon-btn" onclick="startEdit('${esc(m.email)}')" title="编辑">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="icon-btn danger" onclick="deleteMember('${esc(m.email)}')" title="删除">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </div>`;
+      }
+    });
+
+    if (state.showAddMember) {
+      html += `<div class="add-form"><div class="form-fields">
+        <input class="text-input" id="newMemberName" placeholder="姓名（选填）">
+        <input class="text-input" id="newMemberEmail" placeholder="邮箱地址（必填）" onkeydown="if(event.key==='Enter')addMember()">
+        <div class="form-actions">
+          <button class="small-btn primary" onclick="addMember()">添加</button>
+          <button class="small-btn secondary" onclick="state.showAddMember=false;render()">取消</button>
+        </div>
+      </div></div>`;
+    } else {
+      html += `<button class="add-member-btn" onclick="state.showAddMember=true;render();setTimeout(()=>document.getElementById('newMemberEmail')?.focus(),50)">+ 添加成员</button>`;
+    }
+
+    if (group.members.length === 0 && !state.showAddMember) {
+      html += `<div class="empty-state"><div class="empty-icon">📋</div><div class="mono" style="font-size:14px">还没有成员，点击上方添加</div></div>`;
+    }
+  }
+
+  html += `<div class="tip">💡 使用方法：点击"复制全部邮箱" → 到 Outlook 会议邀请 → 在收件人栏 Ctrl+V 粘贴</div>`;
+
+  app.innerHTML = html;
+}
+
+function esc(str) { return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function switchTab(id) { state.activeGroupId = id; state.editingEmail = null; state.showAddMember = false; render(); }
+
+function deleteGroup(id) {
+  state.groups = state.groups.filter(g => g.id !== id);
+  if (state.activeGroupId === id && state.groups.length > 0) state.activeGroupId = state.groups[0].id;
+  saveData(); render();
+}
+
+function addGroup() {
+  const name = document.getElementById('newGroupName')?.value?.trim();
+  if (!name) return;
+  const g = { id: genId(), name, members: [] };
+  state.groups.push(g);
+  state.activeGroupId = g.id;
+  state.showAddGroup = false;
+  saveData(); render();
+}
+
+function addMember() {
+  const email = document.getElementById('newMemberEmail')?.value?.trim();
+  if (!email) return;
+  const name = document.getElementById('newMemberName')?.value?.trim() || email.split('@')[0];
+  const group = getGroup();
+  if (group) { group.members.push({ name, email }); }
+  state.showAddMember = false;
+  saveData(); render();
+}
+
+function deleteMember(email) {
+  const group = getGroup();
+  if (group) { group.members = group.members.filter(m => m.email !== email); }
+  saveData(); render();
+}
+
+function startEdit(email) { state.editingEmail = email; render(); }
+
+function saveEdit(originalEmail) {
+  const name = document.getElementById('editName')?.value?.trim();
+  const email = document.getElementById('editEmail')?.value?.trim();
+  const group = getGroup();
+  if (group) {
+    const m = group.members.find(m => m.email === originalEmail);
+    if (m) { m.name = name || m.name; m.email = email || m.email; }
+  }
+  state.editingEmail = null;
+  saveData(); render();
+}
+
+loadData();
+render();
+
+// Password verification
+const PASS_HASH = 'MN106';
+const lockScreen = document.getElementById('lockScreen');
+const mainContent = document.getElementById('mainContent');
+const pwdInput = document.getElementById('pwdInput');
+const pwdSubmit = document.getElementById('pwdSubmit');
+const pwdError = document.getElementById('pwdError');
+
+// Check if already verified this session
+if (sessionStorage.getItem('lab-verified') === 'true') {
+  lockScreen.style.display = 'none';
+  mainContent.style.display = 'block';
+}
+
+function verifyPassword() {
+  const val = pwdInput.value.trim();
+  if (val === PASS_HASH) {
+    sessionStorage.setItem('lab-verified', 'true');
+    lockScreen.style.display = 'none';
+    mainContent.style.display = 'block';
+  } else {
+    pwdInput.classList.add('error');
+    pwdError.classList.add('show');
+    setTimeout(() => {
+      pwdInput.classList.remove('error');
+    }, 400);
+    setTimeout(() => {
+      pwdError.classList.remove('show');
+    }, 2000);
+  }
+}
+
+pwdSubmit.addEventListener('click', verifyPassword);
+pwdInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') verifyPassword();
+});
+</script>
+</body>
+</html>
